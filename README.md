@@ -31,6 +31,7 @@ This README provides detailed instructions on how to ingest, process, and serve 
 5. Click **Ingest Data** to import the Parquet file into Tinybird.
 6. Once the file is ingested, Tinybird will display a preview of the data. Verify that all columns, including `trip_distance`, are correctly ingested.
 
+
 ### Option: Loop Through and Process Multiple Files
 
 If you want to process more than one file (e.g., an entire year’s worth of taxi data), you can use a Python script to loop through all the Parquet files available on the NYC Taxi website.
@@ -180,9 +181,52 @@ with open('filtered_trips.csv', 'w') as file:
     file.write(response.text)
 ```
 
-## Summary
+## Assumptions
 
-- **Sequential Processing**: Easier to implement but slower for large datasets.
-- **Parallel Processing**: Faster and ideal for large datasets.
+During the implementation of this project, the following questions and assumptions were made to clarify the scope and approach to data processing and ingestion:
 
-Choose the method that fits your needs: simplicity with sequential processing or speed with parallel processing.
+1. **Dataset Scope**:  
+   - It was initially unclear if all available Parquet files from the NYC Yellow Taxi dataset should be processed, or if a specific subset (such as certain time periods or trip types) was preferred. Clarification was sought to ensure the correct dataset was analyzed.
+   
+2. **Distance Calculation**:  
+   - The 0.9 percentile calculation is based on the `trip_distance` column. Clarification was requested on whether additional filtering (such as outlier removal or handling of extreme values) should be performed before calculating the percentile, or if the distance should be calculated exactly as provided in the raw dataset without adjustments.
+   - Further clarification was sought on whether any data cleaning steps were required, such as handling invalid or extreme `trip_distance` values.
+
+3. **Code and Output Format**:  
+   - It was assumed that CSV is a sufficient format for output unless specified otherwise (such as JSON or Parquet). Confirmation was requested on whether there was a preferred structure or format for the output data.
+   - Additional clarification was also requested on the inclusion of specific sections in the README, such as error handling, edge case considerations, and scalability approaches.
+
+## Edge Cases
+
+When working with the NYC Yellow Taxi dataset, the following edge cases were identified and considered:
+
+1. **Invalid or Extreme Trip Distances**:  
+   - Some trips may have incorrect or extreme values for `trip_distance`, such as negative distances or extremely high values that may represent data entry errors. To address this, basic data cleaning will involve removing or capping extreme values based on a reasonable threshold (such as trips with a distance above a certain value like 100 miles, which are outliers).
+   
+2. **Missing or Corrupt Data**:  
+   - While unlikely, it is possible that some records in the Parquet files could have missing or corrupt values in critical columns such as `trip_distance`. A check should be implemented to ignore or flag these rows during the ingestion process.
+   
+3. **Date Range Filtering**:  
+   - There could be instances where only certain date ranges are relevant for analysis, or where specific holidays or events skew the data. Filtering by date can help to reduce the influence of such anomalies in the dataset.
+   
+4. **Handling Incomplete Files**:  
+   - If a file is incomplete or only partially ingested due to network or data integrity issues, this should be logged, and retries or manual interventions may be required.
+
+## Scalability Considerations
+
+Although the solution focuses on processing a single Parquet file for the assessment, the approach to scaling the solution for multiple or all files from the NYC Yellow Taxi dataset was considered:
+
+1. **Batch Processing**:  
+   - If all the monthly Parquet files need to be processed, the system should be designed to handle batch ingestion. Each file can be ingested and processed in sequence or parallel (depending on system resources and time constraints), with options for incremental loading to ensure data integrity.
+   
+2. **Parallel Processing**:  
+   - To speed up processing, parallelization can be applied using Python’s `concurrent.futures` or other multi-threading libraries. By processing files concurrently, the total processing time can be reduced significantly, particularly for large datasets.
+   
+3. **Data Partitioning**:  
+   - Partitioning the data by date or other dimensions (such as taxi zones) can help improve query performance when analyzing large datasets. This allows for faster filtering and querying by minimizing the amount of data processed in each query.
+   
+4. **Scaling with Distributed Systems**:  
+   - For large-scale production use cases, where the full dataset needs to be processed and queried in real time, a distributed processing platform such as Apache Spark or AWS EMR could be used. These platforms are built to handle large datasets across multiple machines, providing both scalability and fault tolerance.
+   
+5. **Trade-offs**:  
+   - Sequential processing is simple to implement but slower, particularly for large datasets. Parallel processing offers faster results but requires more setup and resource management. Depending on the scale of the dataset and system constraints, a balance must be struck between simplicity and performance.
